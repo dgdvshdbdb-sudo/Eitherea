@@ -22,50 +22,48 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: 🧹 Magic Cleaner & File Fixer
+    - name: 🧹 File Cleaner & Location Fixer
       run: |
         echo "Invisible characters saaf kar rahe hain..."
         find . -type f \( -name "*.gradle" -o -name "*.xml" -o -name "*.kt" \) -exec sed -i '1s/^\xef\xbb\xbf//' {} +
         
-        echo "google-services.json ko dhoondh kar sahi jagah set kar rahe hain..."
-        # Pura repo search karo kisi bhi json ke liye jo google-services jaisa dikhta ho
+        echo "google-services.json ko verify kar rahe hain..."
         JSON_FILE=$(find . -name "google-services.json" | head -n 1)
         
         if [ -z "$JSON_FILE" ]; then
-          echo "❌ ERROR: google-services.json abhi bhi nahi mili!"
-          echo "Repo mein ye files hain:"
-          find . -maxdepth 4 -not -path '*/.*'
+          echo "❌ ERROR: google-services.json nahi mili!"
           exit 1
         fi
         
-        echo "✅ File mil gayi: $JSON_FILE"
-        
-        # Project root dhoondho jahan settings.gradle hai
         SETTINGS_PATH=$(find . -name "settings.gradle" | head -n 1)
         PROJECT_ROOT=$(dirname "$SETTINGS_PATH")
+        DEST_PATH="$PROJECT_ROOT/app/google-services.json"
         
-        # Agar app folder nahi hai toh banao aur file wahan move karo
-        mkdir -p "$PROJECT_ROOT/app"
-        cp "$JSON_FILE" "$PROJECT_ROOT/app/google-services.json"
-        echo "✅ File ko $PROJECT_ROOT/app/ mein set kar diya hai."
+        # Sirf tab copy karein agar file galat jagah ho
+        if [ "$JSON_FILE" != "$DEST_PATH" ]; then
+          mkdir -p "$PROJECT_ROOT/app"
+          cp "$JSON_FILE" "$DEST_PATH"
+          echo "✅ File ko move kar diya gaya hai."
+        else
+          echo "✅ File pehle se hi sahi jagah par hai! Build aage badha rahe hain..."
+        fi
 
-    - name: 🚀 Build Eitherea App
+    - name: 🚀 Final Build
       run: |
         SETTINGS_PATH=$(find . -name "settings.gradle" | head -n 1)
         PROJECT_ROOT=$(dirname "$SETTINGS_PATH")
         cd "$PROJECT_ROOT"
         
-        echo "Gradle wrapper ban raha hai..."
         gradle wrapper --gradle-version 8.1.0
         chmod +x ./gradlew
         
-        echo "Building APK..."
+        echo "APK build ho raha hai... Thoda intezaar karein."
         ./gradlew assembleDebug --stacktrace
         
-        cp app/build/outputs/apk/debug/app-debug.apk $GITHUB_WORKSPACE/Eitherea-v1.apk
+        cp app/build/outputs/apk/debug/app-debug.apk $GITHUB_WORKSPACE/Eitherea-Ready.apk
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: Eitherea-App
-        path: Eitherea-v1.apk
+        name: Eitherea-Final-App
+        path: Eitherea-Ready.apk
