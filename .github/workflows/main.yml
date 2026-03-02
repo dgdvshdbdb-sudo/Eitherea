@@ -22,13 +22,12 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    # Naya aur Sabse Zaroori Step: Force Gradle 8.4
     - name: Setup Gradle 8.4
       uses: gradle/actions/setup-gradle@v3
       with:
         gradle-version: '8.4'
 
-    - name: 🧹 File Cleaner & Location Fixer
+    - name: 🧹 File Cleaner, Location Fixer & AndroidX Setup
       run: |
         echo "Invisible characters saaf kar rahe hain..."
         find . -type f \( -name "*.gradle" -o -name "*.xml" -o -name "*.kt" \) -exec sed -i '1s/^\xef\xbb\xbf//' {} +
@@ -53,6 +52,11 @@ jobs:
           echo "✅ File pehle se hi sahi jagah par hai!"
         fi
 
+        # 🚨 THE FIX: Yahan hum AndroidX aur Jetifier enable kar rahe hain
+        echo "android.useAndroidX=true" > "$PROJECT_ROOT/gradle.properties"
+        echo "android.enableJetifier=true" >> "$PROJECT_ROOT/gradle.properties"
+        echo "✅ AndroidX enabled automatically!"
+
     - name: 🚀 Final Build
       run: |
         SETTINGS_PATH=$(find . -name "settings.gradle" | head -n 1)
@@ -60,7 +64,6 @@ jobs:
         cd "$PROJECT_ROOT"
         
         echo "APK build ho raha hai (Using Gradle 8.4)..."
-        # Ab hum sidha 'gradle' command use kar sakte hain
         gradle assembleDebug --stacktrace
         
         cp app/build/outputs/apk/debug/app-debug.apk $GITHUB_WORKSPACE/Eitherea-Ready.apk
