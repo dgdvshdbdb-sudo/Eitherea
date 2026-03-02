@@ -22,52 +22,45 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Smart Build & Error Catcher
-      id: build_step
+    - name: 🧹 Magic File Cleaner (Invisible Character Fix)
+      run: |
+        echo "Windows PowerShell ke invisible characters (BOM) saaf kar rahe hain..."
+        find . -type f \( -name "*.gradle" -o -name "*.xml" -o -name "*.kt" \) -exec sed -i '1s/^\xef\xbb\xbf//' {} +
+        echo "Safai poori hui! Ab files ekdum clean hain."
+
+    - name: Smart Build APK
       run: |
         echo "Searching for Android project files..."
         FILE_PATH=$(find . -name "settings.gradle" | head -n 1)
         
         if [ -z "$FILE_PATH" ]; then
-          echo "❌ Error: settings.gradle nahi mila! Shayad files upload theek se nahi hui hain."
+          echo "❌ Error: settings.gradle nahi mila!"
           exit 1
         fi
         
-        PROJECT_ROOT=$(dirname $FILE_PATH)
-        echo "Project root mil gaya yahan: $PROJECT_ROOT"
-        cd $PROJECT_ROOT
+        PROJECT_ROOT=$(dirname "$FILE_PATH")
+        cd "$PROJECT_ROOT"
+        
+        # Check for google-services.json
+        if [ ! -f "app/google-services.json" ]; then
+          echo "❌ Error: google-services.json file tumhare 'app' folder ke andar nahi hai!"
+          echo "👉 Please apni json file ko GitHub par EithereaApp/app/ folder mein upload karo."
+          exit 1
+        else
+          echo "✅ Awesome! google-services.json is in the correct place."
+        fi
         
         echo "Gradle wrapper ban raha hai..."
         gradle wrapper --gradle-version 8.1.0
         chmod +x ./gradlew
         
         echo "App build shuru ho raha hai..."
-        # Build command aur error logging
-        ./gradlew assembleDebug --stacktrace > build_log.txt 2>&1 || echo "BUILD_FAILED=true" >> $GITHUB_ENV
-        
-        cat build_log.txt
-        
-        if [ "$BUILD_FAILED" == "true" ]; then
-           echo -e "\n\n========================================="
-           echo "🚨 ASLI ERROR YAHAN HAI 🚨"
-           grep -i -A 15 "what went wrong" build_log.txt || grep -i -A 15 "exception" build_log.txt || echo "Details ke liye artifact log download karein."
-           echo "========================================="
-           cp build_log.txt $GITHUB_WORKSPACE/error_log.txt
-           exit 1
-        fi
+        ./gradlew assembleDebug --stacktrace
         
         echo "APK ko bahar laa rahe hain..."
         cp app/build/outputs/apk/debug/app-debug.apk $GITHUB_WORKSPACE/app-debug.apk
 
-    - name: Upload Error Log (Agar Fail Hua)
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: Eitherea-Error-Log
-        path: error_log.txt
-
-    - name: Upload APK (Agar Success Hua)
-      if: success()
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: Eitherea-App
