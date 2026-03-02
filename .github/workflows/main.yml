@@ -22,46 +22,50 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: 🧹 Magic File Cleaner (Invisible Character Fix)
+    - name: 🧹 Magic Cleaner & File Fixer
       run: |
-        echo "Windows PowerShell ke invisible characters (BOM) saaf kar rahe hain..."
+        echo "Invisible characters saaf kar rahe hain..."
         find . -type f \( -name "*.gradle" -o -name "*.xml" -o -name "*.kt" \) -exec sed -i '1s/^\xef\xbb\xbf//' {} +
-        echo "Safai poori hui! Ab files ekdum clean hain."
+        
+        echo "google-services.json ko dhoondh kar sahi jagah set kar rahe hain..."
+        # Pura repo search karo kisi bhi json ke liye jo google-services jaisa dikhta ho
+        JSON_FILE=$(find . -name "google-services.json" | head -n 1)
+        
+        if [ -z "$JSON_FILE" ]; then
+          echo "❌ ERROR: google-services.json abhi bhi nahi mili!"
+          echo "Repo mein ye files hain:"
+          find . -maxdepth 4 -not -path '*/.*'
+          exit 1
+        fi
+        
+        echo "✅ File mil gayi: $JSON_FILE"
+        
+        # Project root dhoondho jahan settings.gradle hai
+        SETTINGS_PATH=$(find . -name "settings.gradle" | head -n 1)
+        PROJECT_ROOT=$(dirname "$SETTINGS_PATH")
+        
+        # Agar app folder nahi hai toh banao aur file wahan move karo
+        mkdir -p "$PROJECT_ROOT/app"
+        cp "$JSON_FILE" "$PROJECT_ROOT/app/google-services.json"
+        echo "✅ File ko $PROJECT_ROOT/app/ mein set kar diya hai."
 
-    - name: Smart Build APK
+    - name: 🚀 Build Eitherea App
       run: |
-        echo "Searching for Android project files..."
-        FILE_PATH=$(find . -name "settings.gradle" | head -n 1)
-        
-        if [ -z "$FILE_PATH" ]; then
-          echo "❌ Error: settings.gradle nahi mila!"
-          exit 1
-        fi
-        
-        PROJECT_ROOT=$(dirname "$FILE_PATH")
+        SETTINGS_PATH=$(find . -name "settings.gradle" | head -n 1)
+        PROJECT_ROOT=$(dirname "$SETTINGS_PATH")
         cd "$PROJECT_ROOT"
-        
-        # Check for google-services.json
-        if [ ! -f "app/google-services.json" ]; then
-          echo "❌ Error: google-services.json file tumhare 'app' folder ke andar nahi hai!"
-          echo "👉 Please apni json file ko GitHub par EithereaApp/app/ folder mein upload karo."
-          exit 1
-        else
-          echo "✅ Awesome! google-services.json is in the correct place."
-        fi
         
         echo "Gradle wrapper ban raha hai..."
         gradle wrapper --gradle-version 8.1.0
         chmod +x ./gradlew
         
-        echo "App build shuru ho raha hai..."
+        echo "Building APK..."
         ./gradlew assembleDebug --stacktrace
         
-        echo "APK ko bahar laa rahe hain..."
-        cp app/build/outputs/apk/debug/app-debug.apk $GITHUB_WORKSPACE/app-debug.apk
+        cp app/build/outputs/apk/debug/app-debug.apk $GITHUB_WORKSPACE/Eitherea-v1.apk
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: Eitherea-App
-        path: app-debug.apk
+        path: Eitherea-v1.apk
