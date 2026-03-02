@@ -22,17 +22,32 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Generate Gradle Wrapper
-      run: gradle wrapper --gradle-version 8.1.0
-      
-    - name: Make gradlew executable
-      run: chmod +x ./gradlew
-
-    - name: Build APK with Gradle
-      run: ./gradlew assembleDebug
+    - name: Smart Build APK
+      run: |
+        echo "Searching for Android project files..."
+        FILE_PATH=$(find . -name "settings.gradle" | head -n 1)
+        
+        if [ -z "$FILE_PATH" ]; then
+          echo "Error: settings.gradle nahi mila! Shayad files upload theek se nahi hui hain."
+          exit 1
+        fi
+        
+        PROJECT_ROOT=$(dirname $FILE_PATH)
+        echo "Project root mil gaya yahan: $PROJECT_ROOT"
+        cd $PROJECT_ROOT
+        
+        echo "Gradle wrapper ban raha hai..."
+        gradle wrapper --gradle-version 8.1.0
+        chmod +x ./gradlew
+        
+        echo "App build shuru ho raha hai..."
+        ./gradlew assembleDebug
+        
+        echo "APK ko bahar laa rahe hain..."
+        cp app/build/outputs/apk/debug/app-debug.apk $GITHUB_WORKSPACE/app-debug.apk
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: Eitherea-App
-        path: app/build/outputs/apk/debug/app-debug.apk
+        path: app-debug.apk
